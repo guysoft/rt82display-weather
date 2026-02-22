@@ -73,10 +73,10 @@ weather widget). The architecture supports adding more providers in the future.
 
 ## Display
 
-The 240x135 pixel display shows:
+The 240x136 pixel display shows the date and time, a weather icon,
+today's min/max temperature in Celsius, and the condition:
 
-- A weather icon (sun, cloud, rain, snow, etc.)
-- Today's min/max temperature in Celsius
+![Example weather display](example_weather.png)
 
 ## License
 
