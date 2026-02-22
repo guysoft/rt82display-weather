@@ -22,6 +22,7 @@ class Config:
     location_name: str = ""
     update_hours: int = DEFAULT_UPDATE_HOURS
     last_updated: Optional[str] = None
+    insecure: bool = False
 
     @property
     def is_configured(self) -> bool:

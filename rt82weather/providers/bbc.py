@@ -82,6 +82,7 @@ class BBCWeatherProvider(WeatherProvider):
             _SEARCH_URL,
             params={"s": query, "format": "json"},
             timeout=10,
+            verify=self.verify_ssl,
         )
         resp.raise_for_status()
         data = resp.json()
@@ -119,6 +120,7 @@ class BBCWeatherProvider(WeatherProvider):
         resp = requests.get(
             _FORECAST_URL.format(place_id=location_id),
             timeout=10,
+            verify=self.verify_ssl,
         )
         resp.raise_for_status()
         data = resp.json()

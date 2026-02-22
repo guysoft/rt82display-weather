@@ -41,6 +41,7 @@ class WeatherForecast:
 
 class WeatherProvider(ABC):
     name: str = ""
+    verify_ssl: bool = True
 
     @abstractmethod
     def search_location(self, query: str) -> list[Location]:
@@ -58,11 +59,13 @@ def register_provider(name: str, cls: type[WeatherProvider]) -> None:
     _PROVIDERS[name] = cls
 
 
-def get_provider(name: str) -> WeatherProvider:
+def get_provider(name: str, verify_ssl: bool = True) -> WeatherProvider:
     cls = _PROVIDERS.get(name)
     if cls is None:
         raise ValueError(f"Unknown provider: {name!r}. Available: {list(_PROVIDERS)}")
-    return cls()
+    instance = cls()
+    instance.verify_ssl = verify_ssl
+    return instance
 
 
 def list_providers() -> list[str]:
