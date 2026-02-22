@@ -44,6 +44,34 @@ def _resolve_insecure(explicit: bool) -> bool:
     return False
 
 
+def _encode_weather_image(img, tmp_qgif_path: Path) -> bytearray:
+    """Encode a PIL Image to QGIF. Tries native encoder, falls back to Python."""
+    from .render import DISPLAY_WIDTH, DISPLAY_HEIGHT
+
+    try:
+        from rt82display.cli import encode_frames_to_qgif
+        if encode_frames_to_qgif([img], tmp_qgif_path, fps=2):
+            muted("  Encoded with native encoder")
+            qgif_data = bytearray(tmp_qgif_path.read_bytes())
+            if len(qgif_data) > 5 and qgif_data[5] == 0x05:
+                qgif_data[5] = 0x03
+            return qgif_data
+    except FileNotFoundError:
+        pass
+
+    from rt82display.qgif import encode_single_image
+    muted("  Native encoder not available, using Python encoder")
+    img.save(tmp_qgif_path.with_suffix(".png"), "PNG")
+    qgif_data = bytearray(encode_single_image(
+        tmp_qgif_path.with_suffix(".png"),
+        width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT,
+    ))
+    tmp_qgif_path.with_suffix(".png").unlink(missing_ok=True)
+    if len(qgif_data) > 5 and qgif_data[5] == 0x05:
+        qgif_data[5] = 0x03
+    return qgif_data
+
+
 @click.group()
 @click.version_option(version=__version__, prog_name="rt82weather")
 def main():
@@ -154,19 +182,13 @@ def update(force: bool, insecure: bool):
     img = render_weather(forecast)
 
     print_header("Encoding QGIF", "\U0001f4e6")
-    from rt82display.cli import encode_frames_to_qgif, upload_to_device
+    from rt82display.cli import upload_to_device
 
     with tempfile.NamedTemporaryFile(suffix=".qgif", delete=False) as tmp_qgif:
         tmp_qgif_path = Path(tmp_qgif.name)
 
     try:
-        if not encode_frames_to_qgif([img], tmp_qgif_path, fps=2):
-            error("QGIF encoding failed")
-            raise click.Abort()
-
-        qgif_data = bytearray(tmp_qgif_path.read_bytes())
-        if len(qgif_data) > 5 and qgif_data[5] == 0x05:
-            qgif_data[5] = 0x03
+        qgif_data = _encode_weather_image(img, tmp_qgif_path)
 
         data = bytes(qgif_data)
         muted(f"  QGIF size: {len(data):,} bytes")
@@ -180,10 +202,6 @@ def update(force: bool, insecure: bool):
         console.print()
         success("Weather uploaded!")
 
-    except FileNotFoundError as e:
-        console.print()
-        error(str(e))
-        raise click.Abort()
     except ConnectionError as e:
         console.print()
         error(f"Connection failed: {e}")
