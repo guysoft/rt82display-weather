@@ -126,27 +126,24 @@ def update(force: bool):
     img = render_weather(forecast)
 
     print_header("Encoding QGIF", "\U0001f4e6")
-    from rt82display.qgif import encode_single_image
+    from rt82display.cli import encode_frames_to_qgif, upload_to_device
 
-    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_png:
-        tmp_png_path = Path(tmp_png.name)
     with tempfile.NamedTemporaryFile(suffix=".qgif", delete=False) as tmp_qgif:
         tmp_qgif_path = Path(tmp_qgif.name)
 
     try:
-        img.save(tmp_png_path, "PNG")
-        qgif_data = encode_single_image(tmp_png_path)
+        if not encode_frames_to_qgif([img], tmp_qgif_path, fps=2):
+            error("QGIF encoding failed")
+            raise click.Abort()
 
-        # Patch header byte 5 for display compatibility (same as rt82display)
-        qgif_bytes = bytearray(qgif_data)
-        if len(qgif_bytes) > 5 and qgif_bytes[5] == 0x05:
-            qgif_bytes[5] = 0x03
+        qgif_data = bytearray(tmp_qgif_path.read_bytes())
+        if len(qgif_data) > 5 and qgif_data[5] == 0x05:
+            qgif_data[5] = 0x03
 
-        data = bytes(qgif_bytes)
+        data = bytes(qgif_data)
         muted(f"  QGIF size: {len(data):,} bytes")
 
         print_header("Uploading", "\U0001f4e4")
-        from rt82display.cli import upload_to_device
         upload_to_device(data, frame_count=1)
 
         cfg.mark_updated()
@@ -155,6 +152,10 @@ def update(force: bool):
         console.print()
         success("Weather uploaded!")
 
+    except FileNotFoundError as e:
+        console.print()
+        error(str(e))
+        raise click.Abort()
     except ConnectionError as e:
         console.print()
         error(f"Connection failed: {e}")
@@ -164,7 +165,6 @@ def update(force: bool):
         error(f"Upload failed: {e}")
         raise click.Abort()
     finally:
-        tmp_png_path.unlink(missing_ok=True)
         tmp_qgif_path.unlink(missing_ok=True)
 
 
