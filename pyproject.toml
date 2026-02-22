@@ -1,0 +1,51 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rt82display-weather"
+dynamic = ["version"]
+description = "Weather display for Epomaker RT82 keyboard LCD screen"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "GPL-3.0-or-later"
+authors = [
+    { name = "Guy Sheffer" }
+]
+keywords = ["epomaker", "rt82", "keyboard", "lcd", "weather"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "rt82display>=0.1.0",
+    "click>=8.1.0",
+    "rich>=13.0.0",
+    "Pillow>=10.0.0",
+    "requests>=2.28.0",
+]
+
+[project.scripts]
+rt82weather = "rt82weather.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/guysoft/rt82display-weather"
+Repository = "https://github.com/guysoft/rt82display-weather"
+"Bug Tracker" = "https://github.com/guysoft/rt82display-weather/issues"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "rt82weather/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["rt82weather"]

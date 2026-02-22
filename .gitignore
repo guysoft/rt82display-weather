@@ -1,0 +1,26 @@
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+# Auto-generated version file (hatch-vcs)
+_version.py
+
+.env
+.envrc
