@@ -37,6 +37,9 @@ def main(ctx, insecure: bool):
     """RT82 Weather - Weather on your keyboard."""
     ctx.ensure_object(dict)
     ctx.obj["insecure"] = insecure
+    if insecure:
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 # ---------------------------------------------------------------------------
@@ -243,9 +246,10 @@ def _find_rt82weather_bin() -> str:
     return sys.executable + " -m rt82weather.cli"
 
 
-def _write_systemd_units(update_hours: int) -> None:
+def _write_systemd_units(update_hours: int, insecure: bool = False) -> None:
     _SYSTEMD_SERVICE_DIR.mkdir(parents=True, exist_ok=True)
     bin_path = _find_rt82weather_bin()
+    k_flag = " -k" if insecure else ""
 
     service = _SYSTEMD_SERVICE_DIR / f"{_SYSTEMD_SERVICE_NAME}.service"
     service.write_text(
@@ -253,7 +257,7 @@ def _write_systemd_units(update_hours: int) -> None:
         f"Description=Update RT82 keyboard weather display\n\n"
         f"[Service]\n"
         f"Type=oneshot\n"
-        f"ExecStart={bin_path} update --force\n"
+        f"ExecStart={bin_path}{k_flag} update --force\n"
     )
 
     timer = _SYSTEMD_SERVICE_DIR / f"{_SYSTEMD_SERVICE_NAME}.timer"
@@ -269,10 +273,11 @@ def _write_systemd_units(update_hours: int) -> None:
     )
 
 
-def _write_launchd_plist(update_hours: int) -> None:
+def _write_launchd_plist(update_hours: int, insecure: bool = False) -> None:
     _LAUNCHD_PLIST_DIR.mkdir(parents=True, exist_ok=True)
     bin_path = _find_rt82weather_bin()
     interval_sec = update_hours * 3600
+    k_args = '    <string>-k</string>\n' if insecure else ''
 
     plist = _LAUNCHD_PLIST_DIR / f"{_LAUNCHD_LABEL}.plist"
     plist.write_text(
@@ -286,6 +291,7 @@ def _write_launchd_plist(update_hours: int) -> None:
         f'  <key>ProgramArguments</key>\n'
         f'  <array>\n'
         f'    <string>{bin_path}</string>\n'
+        f'{k_args}'
         f'    <string>update</string>\n'
         f'    <string>--force</string>\n'
         f'  </array>\n'
@@ -313,7 +319,7 @@ def install():
 
     if system == "Linux":
         print_header("Installing systemd timer", "\u2699\ufe0f")
-        _write_systemd_units(cfg.update_hours)
+        _write_systemd_units(cfg.update_hours, insecure=cfg.insecure)
         subprocess.run(
             ["systemctl", "--user", "daemon-reload"],
             check=False,
@@ -329,7 +335,7 @@ def install():
 
     elif system == "Darwin":
         print_header("Installing launchd agent", "\u2699\ufe0f")
-        _write_launchd_plist(cfg.update_hours)
+        _write_launchd_plist(cfg.update_hours, insecure=cfg.insecure)
         plist_path = _LAUNCHD_PLIST_DIR / f"{_LAUNCHD_LABEL}.plist"
         subprocess.run(["launchctl", "unload", str(plist_path)], check=False,
                        capture_output=True)
