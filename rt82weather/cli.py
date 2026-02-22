@@ -22,24 +22,33 @@ from .providers import bbc as _bbc_side_effect  # noqa: F401
 from .providers import get_provider, list_providers
 
 
-def _get_provider_from_ctx(ctx: click.Context, provider_name: str):
-    """Get a weather provider with SSL settings from the CLI context."""
-    insecure = ctx.obj.get("insecure", False) if ctx.obj else False
-    return get_provider(provider_name, verify_ssl=not insecure)
+def _insecure_option(fn):
+    """Shared -k/--insecure option for commands that make HTTP requests."""
+    return click.option(
+        "-k", "--insecure", is_flag=True, default=False,
+        help="Disable SSL certificate verification",
+    )(fn)
+
+
+def _resolve_insecure(explicit: bool) -> bool:
+    """Return True if insecure mode is active (explicit flag OR saved config)."""
+    if explicit:
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        return True
+    cfg = load_config()
+    if cfg.insecure:
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        return True
+    return False
 
 
 @click.group()
 @click.version_option(version=__version__, prog_name="rt82weather")
-@click.option("-k", "--insecure", is_flag=True, default=False,
-              help="Disable SSL certificate verification")
-@click.pass_context
-def main(ctx, insecure: bool):
+def main():
     """RT82 Weather - Weather on your keyboard."""
-    ctx.ensure_object(dict)
-    ctx.obj["insecure"] = insecure
-    if insecure:
-        import urllib3
-        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    pass
 
 
 # ---------------------------------------------------------------------------
@@ -49,14 +58,14 @@ def main(ctx, insecure: bool):
 @main.command()
 @click.option("--provider", default=None, help="Weather provider (default: bbc)")
 @click.option("--hours", default=None, type=int, help="Update interval in hours (default: 6)")
-@click.pass_context
-def configure(ctx, provider: str | None, hours: int | None):
+@_insecure_option
+def configure(provider: str | None, hours: int | None, insecure: bool):
     """Search for your city and save the weather location."""
     print_banner()
     console.print()
 
     cfg = load_config()
-    insecure = ctx.obj.get("insecure", False) if ctx.obj else False
+    skip_ssl = _resolve_insecure(insecure)
 
     if provider:
         cfg.provider = provider
@@ -65,7 +74,7 @@ def configure(ctx, provider: str | None, hours: int | None):
     if insecure:
         cfg.insecure = True
 
-    prov = _get_provider_from_ctx(ctx, cfg.provider)
+    prov = get_provider(cfg.provider, verify_ssl=not skip_ssl)
     info(f"Using provider: [highlight]{prov.name}[/highlight]")
     console.print()
 
@@ -109,8 +118,8 @@ def configure(ctx, provider: str | None, hours: int | None):
 
 @main.command()
 @click.option("--force", is_flag=True, help="Update even if recently updated")
-@click.pass_context
-def update(ctx, force: bool):
+@_insecure_option
+def update(force: bool, insecure: bool):
     """Fetch weather and upload to the RT82 keyboard display."""
     print_banner()
     console.print()
@@ -129,8 +138,8 @@ def update(ctx, force: bool):
     muted(f"  Location: {cfg.location_name}")
     muted(f"  Provider: {cfg.provider}")
 
-    insecure = (ctx.obj.get("insecure", False) if ctx.obj else False) or cfg.insecure
-    prov = get_provider(cfg.provider, verify_ssl=not insecure)
+    skip_ssl = _resolve_insecure(insecure)
+    prov = get_provider(cfg.provider, verify_ssl=not skip_ssl)
     try:
         forecast = prov.get_forecast(cfg.location_id)
     except Exception as e:
@@ -194,8 +203,8 @@ def update(ctx, force: bool):
 @main.command()
 @click.option("-o", "--output", default="weather_preview.png",
               type=click.Path(), help="Output PNG path")
-@click.pass_context
-def preview(ctx, output: str):
+@_insecure_option
+def preview(output: str, insecure: bool):
     """Generate the weather image without uploading."""
     print_banner()
     console.print()
@@ -208,8 +217,8 @@ def preview(ctx, output: str):
     print_header("Fetching Weather", "\u2601\ufe0f")
     muted(f"  Location: {cfg.location_name}")
 
-    insecure = (ctx.obj.get("insecure", False) if ctx.obj else False) or cfg.insecure
-    prov = get_provider(cfg.provider, verify_ssl=not insecure)
+    skip_ssl = _resolve_insecure(insecure)
+    prov = get_provider(cfg.provider, verify_ssl=not skip_ssl)
     try:
         forecast = prov.get_forecast(cfg.location_id)
     except Exception as e:
