@@ -46,9 +46,12 @@ def _resolve_insecure(explicit: bool) -> bool:
 
 @click.group()
 @click.version_option(version=__version__, prog_name="rt82weather")
-def main():
+@_insecure_option
+@click.pass_context
+def main(ctx, insecure: bool):
     """RT82 Weather - Weather on your keyboard."""
-    pass
+    ctx.ensure_object(dict)
+    ctx.obj["insecure"] = insecure
 
 
 # ---------------------------------------------------------------------------
@@ -58,12 +61,13 @@ def main():
 @main.command()
 @click.option("--provider", default=None, help="Weather provider (default: bbc)")
 @click.option("--hours", default=None, type=int, help="Update interval in hours (default: 6)")
-@_insecure_option
-def configure(provider: str | None, hours: int | None, insecure: bool):
+@click.pass_context
+def configure(ctx, provider: str | None, hours: int | None):
     """Search for your city and save the weather location."""
     print_banner()
     console.print()
 
+    insecure = ctx.obj.get("insecure", False)
     cfg = load_config()
     skip_ssl = _resolve_insecure(insecure)
 
@@ -118,12 +122,13 @@ def configure(provider: str | None, hours: int | None, insecure: bool):
 
 @main.command()
 @click.option("--force", is_flag=True, help="Update even if recently updated")
-@_insecure_option
-def update(force: bool, insecure: bool):
+@click.pass_context
+def update(ctx, force: bool):
     """Fetch weather and upload to the RT82 keyboard display."""
     print_banner()
     console.print()
 
+    insecure = ctx.obj.get("insecure", False)
     cfg = load_config()
     if not cfg.is_configured:
         error("Not configured yet. Run: rt82weather configure")
@@ -154,7 +159,7 @@ def update(force: bool, insecure: bool):
     img = render_weather(forecast)
 
     print_header("Encoding QGIF", "\U0001f4e6")
-    from rt82display.cli import encode_frames_to_qgif, upload_to_device
+    from rt82display.cli import encode_frames_to_qgif, upload_to_device, DeviceBusy
 
     with tempfile.NamedTemporaryFile(suffix=".qgif", delete=False) as tmp_qgif:
         tmp_qgif_path = Path(tmp_qgif.name)
@@ -180,6 +185,14 @@ def update(force: bool, insecure: bool):
         console.print()
         success("Weather uploaded!")
 
+    except DeviceBusy as e:
+        console.print()
+        error(str(e))
+        raise click.Abort()
+    except TimeoutError as e:
+        console.print()
+        error(str(e))
+        raise click.Abort()
     except FileNotFoundError as e:
         console.print()
         error(str(e))
@@ -203,12 +216,13 @@ def update(force: bool, insecure: bool):
 @main.command()
 @click.option("-o", "--output", default="weather_preview.png",
               type=click.Path(), help="Output PNG path")
-@_insecure_option
-def preview(output: str, insecure: bool):
+@click.pass_context
+def preview(ctx, output: str):
     """Generate the weather image without uploading."""
     print_banner()
     console.print()
 
+    insecure = ctx.obj.get("insecure", False)
     cfg = load_config()
     if not cfg.is_configured:
         error("Not configured yet. Run: rt82weather configure")

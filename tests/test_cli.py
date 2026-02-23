@@ -10,6 +10,8 @@ class TestCLIHelp:
         result = CliRunner().invoke(main, ["--help"])
         assert result.exit_code == 0
         assert "RT82 Weather" in result.output
+        assert "-k" in result.output
+        assert "--insecure" in result.output
 
     def test_version(self):
         result = CliRunner().invoke(main, ["--version"])
@@ -19,20 +21,16 @@ class TestCLIHelp:
     def test_configure_help(self):
         result = CliRunner().invoke(main, ["configure", "--help"])
         assert result.exit_code == 0
-        assert "--insecure" in result.output
-        assert "-k" in result.output
 
     def test_update_help(self):
         result = CliRunner().invoke(main, ["update", "--help"])
         assert result.exit_code == 0
         assert "--force" in result.output
-        assert "-k" in result.output
 
     def test_preview_help(self):
         result = CliRunner().invoke(main, ["preview", "--help"])
         assert result.exit_code == 0
         assert "--output" in result.output
-        assert "-k" in result.output
 
     def test_install_help(self):
         result = CliRunner().invoke(main, ["install", "--help"])
