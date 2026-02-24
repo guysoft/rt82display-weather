@@ -60,7 +60,7 @@ def main(ctx, insecure: bool):
 
 @main.command()
 @click.option("--provider", default=None, help="Weather provider (default: bbc)")
-@click.option("--hours", default=None, type=int, help="Update interval in hours (default: 6)")
+@click.option("--hours", default=None, type=int, help="Update interval in hours (default: 1)")
 @click.pass_context
 def configure(ctx, provider: str | None, hours: int | None):
     """Search for your city and save the weather location."""

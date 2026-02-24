@@ -12,7 +12,7 @@ from typing import Optional
 CONFIG_DIR = Path.home() / ".config" / "rt82weather"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
-DEFAULT_UPDATE_HOURS = 6
+DEFAULT_UPDATE_HOURS = 1
 
 
 @dataclass
